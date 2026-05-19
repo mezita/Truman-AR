@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AR Image Tracker</title>
+
+  <!-- A-Frame + AR.js con NFT (Natural Feature Tracking = imágenes reales) -->
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.4.0/dist/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@300;500;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #0d0d0d;
+      --paper: #f5f0e8;
+      --accent: #e84b2a;
+      --soft: #d4cfc4;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Space Grotesk', sans-serif;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--ink);
+      color: var(--paper);
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── UI superpuesta sobre la cámara ── */
+    #ui-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* Header */
+    #header {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 16px 20px 12px;
+      background: linear-gradient(to bottom, rgba(13,13,13,.85) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #header .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    #header h1 {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--paper);
+    }
+    #header .version {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--soft);
+    }
+
+    /* Status badge */
+    #status {
+      position: absolute;
+      bottom: 100px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(13,13,13,.75);
+      border: 1px solid rgba(245,240,232,.15);
+      backdrop-filter: blur(8px);
+      border-radius: 100px;
+      padding: 8px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--soft);
+      white-space: nowrap;
+      transition: all .4s ease;
+    }
+    #status.found {
+      border-color: var(--accent);
+      color: var(--paper);
+      background: rgba(232,75,42,.2);
+    }
+    #status .s-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--soft);
+      transition: background .4s;
+    }
+    #status.found .s-dot { background: var(--accent); }
+
+    /* Corner guides */
+    .corner {
+      position: absolute;
+      width: 28px; height: 28px;
+    }
+    .corner::before, .corner::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+      opacity: .7;
+    }
+    .corner::before { width: 100%; height: 2px; top: 0; left: 0; }
+    .corner::after  { width: 2px; height: 100%; top: 0; left: 0; }
+
+    #c-tl { top: 80px; left: 40px; }
+    #c-tr { top: 80px; right: 40px; transform: scaleX(-1); }
+    #c-bl { bottom: 120px; left: 40px; transform: scaleY(-1); }
+    #c-br { bottom: 120px; right: 40px; transform: scale(-1); }
+
+    /* Bottom instructions */
+    #instructions {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 20px;
+      background: linear-gradient(to top, rgba(13,13,13,.9) 0%, transparent 100%);
+      text-align: center;
+    }
+    #instructions p {
+      font-size: 12px;
+      color: var(--soft);
+      font-family: var(--mono);
+      letter-spacing: .06em;
+    }
+    #instructions .marker-hint {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-family: var(--mono);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.75); }
+    }
+
+    /* ── Landing / Setup screen ── */
+    #setup-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--ink);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      gap: 0;
+    }
+    #setup-screen.hidden { display: none; }
+
+    .setup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: rgba(245,240,232,.08);
+      border: 1px solid rgba(245,240,232,.08);
+      border-radius: 12px;
+      overflow: hidden;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 28px;
+    }
+    .grid-cell {
+      background: var(--ink);
+      padding: 20px 16px;
+    }
+    .grid-cell.accent { background: var(--accent); }
+    .grid-cell h2 {
+      font-size: 11px;
+      font-family: var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      opacity: .5;
+      margin-bottom: 6px;
+    }
+    .grid-cell.accent h2 { opacity: .7; color: var(--ink); }
+    .grid-cell p {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .grid-cell.accent p { color: var(--ink); font-weight: 500; }
+
+    .setup-title {
+      font-size: clamp(28px, 8vw, 48px);
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .setup-title span { color: var(--accent); }
+
+    .setup-sub {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--soft);
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    /* Input for video URL */
+    .input-row {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .input-row input {
+      flex: 1;
+      background: rgba(245,240,232,.06);
+      border: 1px solid rgba(245,240,232,.15);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--paper);
+      font-family: var(--mono);
+      font-size: 12px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--soft); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--ink);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      cursor: pointer;
+      pointer-events: all;
+      transition: opacity .2s, transform .15s;
+      text-transform: uppercase;
+    }
+    .btn-primary:hover { opacity: .85; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-launch {
+      width: 100%;
+      max-width: 480px;
+      padding: 16px;
+      font-size: 13px;
+      border-radius: 10px;
+    }
+
+    .note {
+      margin-top: 14px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--soft);
+      text-align: center;
+      max-width: 380px;
+      line-height: 1.6;
+    }
+    .note a { color: var(--accent); text-decoration: none; }
+
+    /* marker type selector */
+    .type-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 9px 0;
+      border-radius: 8px;
+      border: 1px solid rgba(245,240,232,.15);
+      background: transparent;
+      color: var(--soft);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      pointer-events: all;
+      transition: all .2s;
+    }
+    .tab-btn.active {
+      border-color: var(--accent);
+      color: var(--paper);
+      background: rgba(232,75,42,.15);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════ -->
+<div id="setup-screen">
+  <p class="setup-title">AR<span>.</span>Web</p>
+  <p class="setup-sub">// realidad aumentada en el navegador</p>
+
+  <div class="setup-grid">
+    <div class="grid-cell accent">
+      <h2>Cómo funciona</h2>
+      <p>Apuntás la cámara a una imagen y aparece un video superpuesto.</p>
+    </div>
+    <div class="grid-cell">
+      <h2>Tecnología</h2>
+      <p>AR.js + A-Frame. Sin app. Sin instalar nada.</p>
+    </div>
+    <div class="grid-cell">
+      <h2>Marcador</h2>
+      <p>Hiro (patrón clásico incluido) o imagen propia con NFT.</p>
+    </div>
+    <div class="grid-cell">
+      <h2>Compatibilidad</h2>
+      <p>Chrome en Android, Safari en iOS. Requiere HTTPS.</p>
+    </div>
+  </div>
+
+  <!-- Tipo de marcador -->
+  <div class="type-tabs">
+    <button class="tab-btn active" onclick="setMode('hiro')">Patrón Hiro (demo)</button>
+    <button class="tab-btn" onclick="setMode('nft')">Imagen personalizada</button>
+  </div>
+
+  <!-- Video URL -->
+  <div class="input-row">
+    <input type="url" id="video-url" placeholder="URL del video (.mp4)" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"/>
+  </div>
+
+  <!-- NFT descriptor URL (hidden by default) -->
+  <div class="input-row" id="nft-row" style="display:none">
+    <input type="url" id="nft-url" placeholder="URL del descriptor NFT (sin extensión)"/>
+  </div>
+
+  <button class="btn-primary btn-launch" onclick="launchAR()">Iniciar cámara →</button>
+
+  <p class="note">
+    Para usar tu propia imagen como marcador necesitás generar un descriptor NFT.<br>
+    Usá el generador en <a href="https://carnaux.github.io/NFT-Marker-Creator/" target="_blank">NFT-Marker-Creator</a> y subí los archivos a un servidor HTTPS.<br><br>
+    Para probar la demo <strong>imprimí o mostrá en pantalla el marcador Hiro</strong>:<br>
+    <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" target="_blank">Ver marcador Hiro →</a>
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════
+     UI OVERLAY (sobre la cámara)
+══════════════════════════════════════ -->
+<div id="ui-overlay">
+  <div id="header">
+    <div class="dot"></div>
+    <h1>AR.Web — activo</h1>
+    <span class="version">v1.0</span>
+  </div>
+
+  <div class="corner" id="c-tl"></div>
+  <div class="corner" id="c-tr"></div>
+  <div class="corner" id="c-bl"></div>
+  <div class="corner" id="c-br"></div>
+
+  <div id="status">
+    <div class="s-dot"></div>
+    <span id="status-text">Buscando marcador...</span>
+  </div>
+
+  <div id="instructions">
+    <p>Apuntá la cámara al marcador</p>
+    <span class="marker-hint" id="marker-label">Marcador: Hiro</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     A-FRAME SCENE (se inyecta por JS)
+══════════════════════════════════════ -->
+<div id="ar-container"></div>
+
+<script>
+  let currentMode = 'hiro';
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('nft-row').style.display = mode === 'nft' ? 'flex' : 'none';
+  }
+
+  function launchAR() {
+    const videoUrl = document.getElementById('video-url').value.trim();
+    if (!videoUrl) { alert('Por favor ingresá una URL de video válida.'); return; }
+
+    document.getElementById('setup-screen').classList.add('hidden');
+
+    if (currentMode === 'hiro') {
+      buildHiroScene(videoUrl);
+    } else {
+      const nftUrl = document.getElementById('nft-url').value.trim();
+      if (!nftUrl) { alert('Ingresá la URL del descriptor NFT (sin extensión).'); return; }
+      buildNFTScene(videoUrl, nftUrl);
+    }
+  }
+
+  function buildHiroScene(videoUrl) {
+    document.getElementById('marker-label').textContent = 'Marcador: Hiro';
+
+    const scene = document.createElement('a-scene');
+    scene.setAttribute('embedded', '');
+    scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;');
+    scene.setAttribute('vr-mode-ui', 'enabled: false');
+    scene.style.cssText = 'position:fixed;inset:0;z-index:1;';
+
+    scene.innerHTML = `
+      <a-assets>
+        <video id="ar-video" src="${videoUrl}"
+               preload="auto" loop crossorigin="anonymous"
+               webkit-playsinline playsinline muted>
+        </video>
+      </a-assets>
+
+      <a-marker preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.01">
+        <a-video src="#ar-video"
+                 width="1.6" height="0.9"
+                 position="0 0.01 0"
+                 rotation="-90 0 0">
+        </a-video>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    `;
+
+    document.getElementById('ar-container').appendChild(scene);
+    setupEvents(scene);
+  }
+
+  function buildNFTScene(videoUrl, nftUrl) {
+    document.getElementById('marker-label').textContent = 'Marcador: Imagen personalizada';
+
+    const scene = document.createElement('a-scene');
+    scene.setAttribute('embedded', '');
+    scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false;');
+    scene.setAttribute('vr-mode-ui', 'enabled: false');
+    scene.style.cssText = 'position:fixed;inset:0;z-index:1;';
+
+    scene.innerHTML = `
+      <a-assets>
+        <video id="ar-video" src="${videoUrl}"
+               preload="auto" loop crossorigin="anonymous"
+               webkit-playsinline playsinline muted>
+        </video>
+      </a-assets>
+
+      <a-nft type="nft" url="${nftUrl}" smooth="true" smoothCount="10" smoothTolerance="0.01">
+        <a-video src="#ar-video"
+                 width="1.6" height="0.9"
+                 position="0 0 0"
+                 rotation="-90 0 0">
+        </a-video>
+      </a-nft>
+
+      <a-entity camera></a-entity>
+    `;
+
+    document.getElementById('ar-container').appendChild(scene);
+    setupEvents(scene);
+  }
+
+  function setupEvents(scene) {
+    const statusEl  = document.getElementById('status');
+    const statusTxt = document.getElementById('status-text');
+
+    scene.addEventListener('loaded', () => {
+      // Esperar a que los markers estén listos
+      setTimeout(() => {
+        const markers = scene.querySelectorAll('a-marker, a-nft');
+        markers.forEach(marker => {
+          marker.addEventListener('markerFound', () => {
+            statusEl.classList.add('found');
+            statusTxt.textContent = '¡Marcador detectado!';
+            // Play video con interacción previa del usuario
+            const vid = document.getElementById('ar-video');
+            if (vid) vid.play().catch(() => {});
+          });
+          marker.addEventListener('markerLost', () => {
+            statusEl.classList.remove('found');
+            statusTxt.textContent = 'Buscando marcador...';
+          });
+        });
+      }, 1000);
+    });
+  }
+</script>
+
+</body>
+</html>
