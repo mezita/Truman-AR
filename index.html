@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR Image Tracking</title>
+    <link rel="stylesheet" href="styles.css" />
+
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <!-- AR.js con soporte de image tracking -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+  </head>
+  <body>
+    <div id="overlay">
+      <div id="status-box">
+        <span id="status-icon">📷</span>
+        <p id="status-text">Apuntá la cámara a la imagen marcador</p>
+      </div>
+    </div>
+
+    <a-scene
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true; precision: medium;"
+      embedded
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+    >
+      <!-- Cámara AR -->
+      <a-camera></a-camera>
+
+      <!-- Entidad de image tracking NFT -->
+      <!-- Reemplazá "targets/marker" con la ruta a tus archivos .fset, .fset3, .iset -->
+      <a-nft
+        type="nft"
+        url="targets/marker"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5"
+        id="nft-marker"
+      >
+        <!-- Video plano que aparece sobre la imagen -->
+        <a-video
+          id="ar-video"
+          src="#marker-video"
+          width="1.6"
+          height="0.9"
+          position="0 0 0"
+          rotation="-90 0 0"
+          visible="false"
+        ></a-video>
+      </a-nft>
+
+      <!-- Assets: el video a reproducir -->
+      <a-assets>
+        <!-- Reemplazá "video/tu-video.mp4" con la ruta a tu archivo de video -->
+        <video
+          id="marker-video"
+          src="video/tu-video.mp4"
+          preload="auto"
+          loop="true"
+          crossorigin="anonymous"
+          playsinline
+          webkit-playsinline
+        ></video>
+      </a-assets>
+    </a-scene>
+
+    <script src="app.js"></script>
+  </body>
+</html>

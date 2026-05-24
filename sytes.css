@@ -1,0 +1,82 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  background: #000;
+  font-family: "Segoe UI", sans-serif;
+}
+
+a-scene {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Overlay de estado */
+#overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 999;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+}
+
+#status-box {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 10px 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  transition: background 0.4s ease;
+}
+
+#status-box.found {
+  background: rgba(0, 180, 100, 0.75);
+  border-color: rgba(0, 255, 140, 0.4);
+}
+
+#status-icon {
+  font-size: 18px;
+}
+
+#status-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Viewfinder decorativo */
+#overlay::after {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 260px;
+  height: 180px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.25),
+    inset 0 0 30px rgba(255, 255, 255, 0.04);
+  animation: pulse-border 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.2); }
+  50%       { border-color: rgba(255, 255, 255, 0.55); }
+}
