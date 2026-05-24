@@ -1,471 +1,518 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AR Image Tracker</title>
 
-  <!-- A-Frame -->
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.4.0/dist/aframe.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
-  <!-- AR.js estable -->
-  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar-nft.min.js"></script>
+  <title>AR.Web</title>
+
+  <!-- AFRAME -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+  <!-- AR.JS -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <style>
+
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@300;500;700&display=swap');
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
     }
 
-    :root {
-      --ink: #0d0d0d;
-      --paper: #f5f0e8;
-      --accent: #e84b2a;
-      --soft: #d4cfc4;
-      --mono: 'DM Mono', monospace;
-      --sans: 'Space Grotesk', sans-serif;
+    :root{
+      --bg:#0d0d0d;
+      --paper:#f5f0e8;
+      --accent:#ff5c35;
+      --soft:#a1a1a1;
+      --mono:'DM Mono', monospace;
+      --sans:'Space Grotesk', sans-serif;
     }
 
-    body {
-      font-family: var(--sans);
-      background: var(--ink);
-      color: var(--paper);
-      min-height: 100vh;
-      overflow: hidden;
+    body{
+      font-family:var(--sans);
+      background:black;
+      overflow:hidden;
+      color:white;
     }
 
-    #setup-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 999;
-      background: var(--ink);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 24px;
+    #setup-screen{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      background:var(--bg);
+
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+
+      padding:24px;
     }
 
-    #setup-screen.hidden {
-      display: none;
+    #setup-screen.hidden{
+      display:none;
     }
 
-    .setup-title {
-      font-size: 48px;
-      font-weight: 700;
-      margin-bottom: 8px;
+    .title{
+      font-size:56px;
+      font-weight:700;
+      letter-spacing:-2px;
+      margin-bottom:10px;
     }
 
-    .setup-title span {
-      color: var(--accent);
+    .title span{
+      color:var(--accent);
     }
 
-    .setup-sub {
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--soft);
-      margin-bottom: 32px;
+    .subtitle{
+      font-size:12px;
+      font-family:var(--mono);
+      color:var(--soft);
+      margin-bottom:40px;
+      text-align:center;
     }
 
-    .type-tabs {
-      width: 100%;
-      max-width: 500px;
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
+    .input-group{
+      width:100%;
+      max-width:500px;
+      margin-bottom:16px;
     }
 
-    .tab-btn {
-      flex: 1;
-      border: 1px solid rgba(255,255,255,.1);
-      background: transparent;
-      color: var(--soft);
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-family: var(--mono);
+    input{
+      width:100%;
+      border:none;
+      outline:none;
+
+      background:rgba(255,255,255,.06);
+
+      border:1px solid rgba(255,255,255,.1);
+
+      color:white;
+
+      padding:16px;
+      border-radius:12px;
+
+      font-family:var(--mono);
+      font-size:12px;
     }
 
-    .tab-btn.active {
-      border-color: var(--accent);
-      background: rgba(232,75,42,.15);
-      color: white;
+    input:focus{
+      border-color:var(--accent);
     }
 
-    .input-row {
-      width: 100%;
-      max-width: 500px;
-      margin-bottom: 12px;
+    .btn{
+      width:100%;
+      max-width:500px;
+
+      background:var(--accent);
+      color:black;
+
+      border:none;
+      outline:none;
+
+      padding:16px;
+
+      border-radius:12px;
+
+      font-family:var(--mono);
+      font-size:12px;
+      font-weight:700;
+
+      cursor:pointer;
+
+      transition:.2s;
     }
 
-    input {
-      width: 100%;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 8px;
-      padding: 14px;
-      color: white;
-      font-family: var(--mono);
-      outline: none;
+    .btn:hover{
+      opacity:.9;
     }
 
-    input:focus {
-      border-color: var(--accent);
+    .help{
+      margin-top:24px;
+      text-align:center;
+      font-size:12px;
+      color:var(--soft);
+      line-height:1.6;
+      max-width:500px;
     }
 
-    .btn-primary {
-      width: 100%;
-      max-width: 500px;
-      margin-top: 16px;
-      background: var(--accent);
-      border: none;
-      padding: 16px;
-      border-radius: 10px;
-      font-family: var(--mono);
-      font-weight: bold;
-      cursor: pointer;
-      color: black;
-      text-transform: uppercase;
+    .help a{
+      color:var(--accent);
+      text-decoration:none;
     }
 
-    #ui-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      pointer-events: none;
+    #overlay{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:100;
     }
 
-    #status {
-      position: absolute;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,.75);
-      padding: 10px 18px;
-      border-radius: 100px;
-      font-family: var(--mono);
-      font-size: 12px;
-      border: 1px solid rgba(255,255,255,.1);
+    #status{
+      position:absolute;
+      left:50%;
+      bottom:90px;
+      transform:translateX(-50%);
+
+      background:rgba(0,0,0,.7);
+
+      border:1px solid rgba(255,255,255,.1);
+
+      padding:12px 18px;
+
+      border-radius:999px;
+
+      font-family:var(--mono);
+      font-size:12px;
+
+      backdrop-filter:blur(10px);
     }
 
-    #status.found {
-      background: rgba(232,75,42,.2);
-      border-color: var(--accent);
+    #status.active{
+      border-color:var(--accent);
+      color:white;
     }
 
-    #instructions {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
-      text-align: center;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--soft);
+    #instructions{
+      position:absolute;
+      bottom:24px;
+      width:100%;
+      text-align:center;
+
+      font-size:12px;
+      font-family:var(--mono);
+      color:var(--soft);
     }
 
-    #ar-container {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
+    #ar-container{
+      position:fixed;
+      inset:0;
+      z-index:1;
     }
+
   </style>
+
 </head>
+
 <body>
 
-<div id="setup-screen">
+  <!-- SETUP -->
 
-  <h1 class="setup-title">
-    AR<span>.</span>Web
-  </h1>
+  <div id="setup-screen">
 
-  <p class="setup-sub">
-    realidad aumentada en navegador
-  </p>
+    <div class="title">
+      AR<span>.</span>Web
+    </div>
 
-  <div class="type-tabs">
-    <button class="tab-btn active"
-            onclick="setMode('hiro', this)">
-      Hiro
+    <div class="subtitle">
+      Realidad aumentada en navegador
+    </div>
+
+    <div class="input-group">
+      <input
+        type="url"
+        id="video-url"
+        placeholder="URL del video MP4"
+        value="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+      />
+    </div>
+
+    <button
+      class="btn"
+      onclick="launchAR()"
+    >
+      Iniciar Cámara
     </button>
 
-    <button class="tab-btn"
-            onclick="setMode('nft', this)">
-      NFT
-    </button>
+    <div class="help">
+
+      Abrí este marcador Hiro en otra pantalla o imprimilo:<br><br>
+
+      :contentReference[oaicite:0]{index=0}
+
+    </div>
+
   </div>
 
-  <div class="input-row">
-    <input
-      type="url"
-      id="video-url"
-      placeholder="URL del video MP4"
-      value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-    />
-  </div>
+  <!-- UI -->
 
-  <div class="input-row" id="nft-row" style="display:none">
-    <input
-      type="url"
-      id="nft-url"
-      placeholder="URL del descriptor NFT"
-    />
-  </div>
+  <div id="overlay">
 
-  <button class="btn-primary" onclick="launchAR()">
-    Iniciar cámara
-  </button>
-
-</div>
-
-<div id="ui-overlay">
-
-  <div id="status">
-    <span id="status-text">
+    <div id="status">
       Buscando marcador...
-    </span>
+    </div>
+
+    <div id="instructions">
+      Apuntá la cámara al marcador Hiro
+    </div>
+
   </div>
 
-  <div id="instructions">
-    Apuntá la cámara al marcador
-  </div>
+  <!-- AR -->
 
-</div>
+  <div id="ar-container"></div>
 
-<div id="ar-container"></div>
+  <script>
 
-<script>
+    async function launchAR(){
 
-let currentMode = 'hiro';
+      console.log("Inicializando AR");
 
-function setMode(mode, btn) {
+      const videoUrl =
+        document
+          .getElementById('video-url')
+          .value
+          .trim();
 
-  currentMode = mode;
+      if(!videoUrl){
 
-  document
-    .querySelectorAll('.tab-btn')
-    .forEach(b => b.classList.remove('active'));
+        alert("Ingresá una URL válida");
 
-  btn.classList.add('active');
+        return;
+      }
 
-  document.getElementById('nft-row').style.display =
-    mode === 'nft'
-      ? 'block'
-      : 'none';
-}
+      try{
 
-function launchAR() {
+        document
+          .getElementById('setup-screen')
+          .classList
+          .add('hidden');
 
-  const videoUrl =
-    document
-      .getElementById('video-url')
-      .value
-      .trim();
+        document
+          .getElementById('ar-container')
+          .innerHTML = '';
 
-  if (!videoUrl) {
-    alert('Ingresá una URL válida.');
-    return;
-  }
+        buildScene(videoUrl);
 
-  if (currentMode === 'nft') {
+      }catch(err){
 
-    const nftUrl =
-      document
-        .getElementById('nft-url')
-        .value
-        .trim();
+        console.error(err);
 
-    if (!nftUrl) {
-      alert('Ingresá la URL NFT.');
-      return;
+        alert("Error iniciando AR");
+      }
     }
-  }
 
-  document
-    .getElementById('setup-screen')
-    .classList.add('hidden');
+    function buildScene(videoUrl){
 
-  document
-    .getElementById('ar-container')
-    .innerHTML = '';
+      console.log("Creando escena");
 
-  if (currentMode === 'hiro') {
-    buildHiroScene(videoUrl);
-  } else {
-    const nftUrl =
-      document
-        .getElementById('nft-url')
-        .value
-        .trim();
+      const scene =
+        document.createElement('a-scene');
 
-    buildNFTScene(videoUrl, nftUrl);
-  }
-}
+      scene.setAttribute(
+        'embedded',
+        true
+      );
 
-function createVideoAsset(videoUrl) {
+      scene.setAttribute(
+        'vr-mode-ui',
+        'enabled: false'
+      );
 
-  const assets = document.createElement('a-assets');
+      scene.setAttribute(
+        'renderer',
+        'logarithmicDepthBuffer: true;'
+      );
 
-  const video = document.createElement('video');
+      scene.setAttribute(
+        'arjs',
+        `
+        trackingMethod: best;
+        sourceType: webcam;
+        debugUIEnabled: false;
+        `
+      );
 
-  video.setAttribute('id', 'ar-video');
-  video.setAttribute('src', videoUrl);
-  video.setAttribute('loop', true);
-  video.setAttribute('crossorigin', 'anonymous');
-  video.setAttribute('webkit-playsinline', true);
-  video.setAttribute('playsinline', true);
-  video.setAttribute('autoplay', true);
-  video.setAttribute('muted', true);
-  video.muted = true;
+      /*
+      ASSETS
+      */
 
-  assets.appendChild(video);
+      const assets =
+        document.createElement('a-assets');
 
-  return assets;
-}
+      const video =
+        document.createElement('video');
 
-function buildHiroScene(videoUrl) {
+      video.setAttribute(
+        'id',
+        'video-texture'
+      );
 
-  const scene = document.createElement('a-scene');
+      video.setAttribute(
+        'src',
+        videoUrl
+      );
 
-  scene.setAttribute('embedded', '');
-  scene.setAttribute(
-    'arjs',
-    'sourceType: webcam; debugUIEnabled: false;'
-  );
+      video.setAttribute(
+        'loop',
+        true
+      );
 
-  scene.setAttribute(
-    'vr-mode-ui',
-    'enabled: false'
-  );
+      video.setAttribute(
+        'crossorigin',
+        'anonymous'
+      );
 
-  scene.appendChild(
-    createVideoAsset(videoUrl)
-  );
+      video.setAttribute(
+        'webkit-playsinline',
+        true
+      );
 
-  const marker =
-    document.createElement('a-marker');
+      video.setAttribute(
+        'playsinline',
+        true
+      );
 
-  marker.setAttribute('preset', 'hiro');
+      video.setAttribute(
+        'muted',
+        true
+      );
 
-  const videoPlane =
-    document.createElement('a-video');
-
-  videoPlane.setAttribute('src', '#ar-video');
-  videoPlane.setAttribute('width', '1.6');
-  videoPlane.setAttribute('height', '0.9');
-  videoPlane.setAttribute('rotation', '-90 0 0');
-
-  marker.appendChild(videoPlane);
-
-  scene.appendChild(marker);
-
-  const camera =
-    document.createElement('a-entity');
-
-  camera.setAttribute('camera', '');
-
-  scene.appendChild(camera);
-
-  document
-    .getElementById('ar-container')
-    .appendChild(scene);
-
-  setupEvents(marker);
-}
-
-function buildNFTScene(videoUrl, nftUrl) {
-
-  const scene = document.createElement('a-scene');
-
-  scene.setAttribute('embedded', '');
-
-  scene.setAttribute(
-    'arjs',
-    'sourceType: webcam; debugUIEnabled: false;'
-  );
-
-  scene.setAttribute(
-    'vr-mode-ui',
-    'enabled: false'
-  );
-
-  scene.appendChild(
-    createVideoAsset(videoUrl)
-  );
-
-  const nft =
-    document.createElement('a-nft');
-
-  nft.setAttribute('type', 'nft');
-  nft.setAttribute('url', nftUrl);
-
-  const videoPlane =
-    document.createElement('a-video');
-
-  videoPlane.setAttribute('src', '#ar-video');
-  videoPlane.setAttribute('width', '1.6');
-  videoPlane.setAttribute('height', '0.9');
-  videoPlane.setAttribute('rotation', '-90 0 0');
-
-  nft.appendChild(videoPlane);
-
-  scene.appendChild(nft);
-
-  const camera =
-    document.createElement('a-entity');
-
-  camera.setAttribute('camera', '');
-
-  scene.appendChild(camera);
-
-  document
-    .getElementById('ar-container')
-    .appendChild(scene);
-
-  setupEvents(nft);
-}
-
-function setupEvents(marker) {
-
-  const status =
-    document.getElementById('status');
-
-  const statusText =
-    document.getElementById('status-text');
-
-  marker.addEventListener('markerFound', () => {
-
-    status.classList.add('found');
-
-    statusText.textContent =
-      'Marcador detectado';
-
-    const video =
-      document.getElementById('ar-video');
-
-    if (video) {
+      video.setAttribute(
+        'autoplay',
+        true
+      );
 
       video.muted = true;
 
-      video.play()
-        .catch(err => {
-          console.log(err);
-        });
+      assets.appendChild(video);
+
+      scene.appendChild(assets);
+
+      /*
+      MARKER
+      */
+
+      const marker =
+        document.createElement('a-marker');
+
+      marker.setAttribute(
+        'preset',
+        'hiro'
+      );
+
+      marker.setAttribute(
+        'smooth',
+        true
+      );
+
+      /*
+      VIDEO PLANE
+      */
+
+      const plane =
+        document.createElement('a-video');
+
+      plane.setAttribute(
+        'src',
+        '#video-texture'
+      );
+
+      plane.setAttribute(
+        'width',
+        '1.6'
+      );
+
+      plane.setAttribute(
+        'height',
+        '0.9'
+      );
+
+      plane.setAttribute(
+        'rotation',
+        '-90 0 0'
+      );
+
+      plane.setAttribute(
+        'position',
+        '0 0 0'
+      );
+
+      marker.appendChild(plane);
+
+      scene.appendChild(marker);
+
+      /*
+      CAMERA
+      */
+
+      const camera =
+        document.createElement('a-entity');
+
+      camera.setAttribute(
+        'camera',
+        ''
+      );
+
+      scene.appendChild(camera);
+
+      /*
+      APPEND
+      */
+
+      document
+        .getElementById('ar-container')
+        .appendChild(scene);
+
+      /*
+      EVENTS
+      */
+
+      const status =
+        document.getElementById('status');
+
+      marker.addEventListener(
+        'markerFound',
+        async ()=>{
+
+          console.log("Marker encontrado");
+
+          status.innerHTML =
+            'Marcador detectado';
+
+          status.classList.add('active');
+
+          try{
+
+            await video.play();
+
+          }catch(err){
+
+            console.log(err);
+          }
+        }
+      );
+
+      marker.addEventListener(
+        'markerLost',
+        ()=>{
+
+          console.log("Marker perdido");
+
+          status.innerHTML =
+            'Buscando marcador...';
+
+          status.classList.remove('active');
+        }
+      );
+
+      scene.addEventListener(
+        'loaded',
+        ()=>{
+
+          console.log("Scene loaded");
+        }
+      );
     }
-  });
 
-  marker.addEventListener('markerLost', () => {
-
-    status.classList.remove('found');
-
-    statusText.textContent =
-      'Buscando marcador...';
-  });
-}
-
-</script>
+  </script>
 
 </body>
 </html>
