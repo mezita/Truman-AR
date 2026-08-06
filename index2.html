@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR.js Video Overlay</title>
+    <!-- A-Frame y AR.js para NFT (Image Tracking) -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+    <style>
+      .arjs-loader {
+        height: 100%;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 1.2rem;
+      }
+    </style>
+  </head>
+
+  <body style="margin: 0px; overflow: hidden">
+    <!-- Pantalla de carga mientras se procesan las descriptores del marcador -->
+    <div class="arjs-loader">
+      <div>Cargando marcador AR... Enfoca la imagen al finalizar.</div>
+    </div>
+
+    <a-scene
+      vr-mode-ui="enabled: false;"
+      renderer="logarithmicDepthBuffer: true;"
+      embedded
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+    >
+      <a-assets>
+        <!-- RUTA DE TU VIDEO -->
+        <video
+          id="ar-video"
+          src="tu-video.mp4"
+          preload="auto"
+          loop
+          crossorigin
+          webkit-playsinline
+          playsinline
+          muted
+        ></video>
+      </a-assets>
+
+      <!-- RUTA DEL MARCADOR NFT (sin incluir las extensiones .fset/.iset) -->
+      <a-nft
+        type="nft"
+        url="targets/puerta"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance=".01"
+        smoothThreshold="5"
+      >
+        <!-- Entidad de video superpuesta sobre la foto escaneada -->
+        <a-video
+          src="#ar-video"
+          width="300"
+          height="175"
+          position="150 0 -150"
+          rotation="-90 0 0"
+        ></a-video>
+      </a-nft>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      // Ocultar pantalla de carga cuando el marcador esté listo
+      window.addEventListener("arjs-nft-loaded", function () {
+        var loader = document.querySelector(".arjs-loader");
+        if (loader) loader.style.display = "none";
+      });
+
+      // Permite iniciar y desmutear el video con un toque en la pantalla
+      window.addEventListener("click", function () {
+        var v = document.querySelector("#ar-video");
+        if (v.paused) {
+          v.muted = false;
+          v.play();
+        } else {
+          v.pause();
+        }
+      });
+    </script>
+  </body>
+</html>
