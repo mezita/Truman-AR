@@ -3,66 +3,160 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AR.js Video Overlay</title>
-    <!-- A-Frame y AR.js para NFT (Image Tracking) -->
+    <title>AR.js Video Overlay NFT</title>
+
+    <!-- 1. Carga de A-Frame y versión estable fija de AR.js (NFT) -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+
+      /* Pantalla de carga mientras se descargan y procesan los descriptores .fset/.iset */
       .arjs-loader {
         height: 100%;
         width: 100%;
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         background-color: rgba(0, 0, 0, 0.85);
         z-index: 9999;
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
-        color: white;
+        color: #ffffff;
         font-family: Arial, sans-serif;
-        font-size: 1.2rem;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top: 4px solid #ffffff;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Botón flotante para desbloquear el audio en navegadores móviles (iOS/Android) */
+      #tap-to-play {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background-color: #007bff;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        display: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
       }
     </style>
   </head>
 
-  <body style="margin: 0px; overflow: hidden">
-    <!-- Pantalla de carga mientras se procesan las descriptores del marcador -->
+  <body>
+    <!-- Pantalla de carga superpuesta -->
     <div class="arjs-loader">
-      <div>Cargando marcador AR... Enfoca la imagen al finalizar.</div>
+      <div class="spinner"></div>
+      <div>Cargando marcador AR...</div>
+      <div style="font-size: 0.85rem; margin-top: 8px; opacity: 0.8">
+        Esto puede demorar unos segundos mientras descarga el marcador.
+      </div>
     </div>
 
+    <!-- Indicador de interacción para móviles -->
+    <div id="tap-to-play">Toca la pantalla para activar sonido</div>
+
+    <script>
+      // Componente A-Frame personalizado para controlar el video al detectar o perder el marcador
+      AFRAME.registerComponent("videohandler", {
+        init: function () {
+          var marker = this.el;
+          this.vid = document.querySelector("#ar-video");
+
+          // Al detectar la foto/cuadro objetivo
+          marker.addEventListener(
+            "markerFound",
+            function () {
+              if (this.vid) {
+                this.vid.play();
+              }
+            }.bind(this),
+          );
+
+          // Al dejar de enfocar la foto/cuadro
+          marker.addEventListener(
+            "markerLost",
+            function () {
+              if (this.vid) {
+                this.vid.pause();
+              }
+            }.bind(this),
+          );
+        },
+      });
+    </script>
+
+    <!-- Escena AR.js -->
     <a-scene
       vr-mode-ui="enabled: false;"
-      renderer="logarithmicDepthBuffer: true;"
+      renderer="logarithmicDepthBuffer: true; precision: medium;"
       embedded
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
       <a-assets>
-        <!-- RUTA DE TU VIDEO -->
+        <!-- RUTA DEL VIDEO -->
+        <!-- Se puede usar ruta relativa o la URL absoluta de GitHub Pages -->
         <video
           id="ar-video"
           src="tu-video.mp4"
           preload="auto"
           loop
-          crossorigin
+          crossorigin="anonymous"
           webkit-playsinline
           playsinline
           muted
         ></video>
       </a-assets>
 
-      <!-- RUTA DEL MARCADOR NFT (sin incluir las extensiones .fset/.iset) -->
+      <!-- 
+        MARCADOR AR NFT 
+        REEMPLAZA 'https://TU-USUARIO.github.io/TU-REPOSISTORIO' por tu URL real de GitHub Pages.
+        Nota: NO incluyas las extensiones (.fset, .fset2, .iset) al final de la URL.
+      -->
       <a-nft
+        videohandler
         type="nft"
-        url="targets/puerta"
+        url="https://mezita.github.io/Truman-AR/targets/cuadro"
         smooth="true"
         smoothCount="10"
         smoothTolerance=".01"
         smoothThreshold="5"
       >
-        <!-- Entidad de video superpuesta sobre la foto escaneada -->
+        <!-- 
+          Objeto de video proyectado sobre la imagen. 
+          Ajusta width, height, position y rotation según el tamaño y orientación de tu cuadro.
+        -->
         <a-video
           src="#ar-video"
           width="300"
@@ -76,22 +170,33 @@
     </a-scene>
 
     <script>
-      // Ocultar pantalla de carga cuando el marcador esté listo
+      // Evento ejecutado cuando AR.js procesa exitosamente los archivos del marcador
       window.addEventListener("arjs-nft-loaded", function () {
         var loader = document.querySelector(".arjs-loader");
-        if (loader) loader.style.display = "none";
-      });
-
-      // Permite iniciar y desmutear el video con un toque en la pantalla
-      window.addEventListener("click", function () {
-        var v = document.querySelector("#ar-video");
-        if (v.paused) {
-          v.muted = false;
-          v.play();
-        } else {
-          v.pause();
+        if (loader) {
+          loader.style.display = "none";
+        }
+        var tapButton = document.querySelector("#tap-to-play");
+        if (tapButton) {
+          tapButton.style.display = "block";
         }
       });
+
+      // Permite desmutear el video en dispositivos móviles mediante interacción del usuario
+      document.body.addEventListener(
+        "click",
+        function () {
+          var video = document.querySelector("#ar-video");
+          if (video) {
+            video.muted = false;
+          }
+          var tapButton = document.querySelector("#tap-to-play");
+          if (tapButton) {
+            tapButton.style.display = "none";
+          }
+        },
+        { once: true },
+      );
     </script>
   </body>
 </html>
