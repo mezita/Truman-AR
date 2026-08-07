@@ -1,71 +1,219 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>AR Image Tracking</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Truman AR - Video Tracking</title>
 
-    <!-- A-Frame -->
+    <!-- A-Frame y versión estable de AR.js NFT -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- AR.js con soporte de image tracking -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar-nft.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+      }
+
+      /* Pantalla de carga inicial */
+      .arjs-loader {
+        height: 100%;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #ffffff;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #ffffff;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 12px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Recuadro de guía para escanear */
+      #ar-reticle {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 260px;
+        height: 260px;
+        border: 4px solid rgba(255, 50, 50, 0.85);
+        border-radius: 16px;
+        box-shadow: 0 0 15px rgba(255, 50, 50, 0.5);
+        z-index: 1000;
+        display: none;
+        pointer-events: none;
+        transition:
+          border-color 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      /* Estado cuando detecta la imagen correcta */
+      #ar-reticle.detected {
+        border-color: rgba(46, 204, 113, 0.9);
+        box-shadow: 0 0 25px rgba(46, 204, 113, 0.8);
+      }
+
+      /* Mensaje guía inferior */
+      #ar-instruction {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #ffffff;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        z-index: 1000;
+        display: none;
+        pointer-events: none;
+        text-align: center;
+      }
+    </style>
   </head>
+
   <body>
-    <div id="overlay">
-      <div id="status-box">
-        <span id="status-icon">📷</span>
-        <p id="status-text">Apuntá la cámara a la imagen marcador</p>
+    <!-- UI Overlay -->
+    <div class="arjs-loader">
+      <div class="spinner"></div>
+      <div>Cargando marcador AR...</div>
+      <div style="font-size: 0.8rem; margin-top: 6px; opacity: 0.7">
+        Procesando descriptores de la imagen
       </div>
     </div>
 
+    <div id="ar-reticle"></div>
+    <div id="ar-instruction">Apunta al cuadro/foto para reproducir</div>
+
+    <script>
+      // Componente de control para detección y video
+      AFRAME.registerComponent("ar-controller", {
+        init: function () {
+          var marker = this.el;
+          this.vid = document.querySelector("#ar-video");
+          this.reticle = document.querySelector("#ar-reticle");
+          this.instruction = document.querySelector("#ar-instruction");
+
+          // Evento: Imagen detectada
+          marker.addEventListener(
+            "markerFound",
+            function () {
+              if (this.reticle) this.reticle.classList.add("detected");
+              if (this.instruction)
+                this.instruction.textContent = "¡Imagen detectada!";
+              if (this.vid) this.vid.play();
+            }.bind(this),
+          );
+
+          // Evento: Imagen perdida
+          marker.addEventListener(
+            "markerLost",
+            function () {
+              if (this.reticle) this.reticle.classList.remove("detected");
+              if (this.instruction)
+                this.instruction.textContent =
+                  "Apunta al cuadro/foto para reproducir";
+              if (this.vid) this.vid.pause();
+            }.bind(this),
+          );
+        },
+      });
+    </script>
+
+    <!-- Escena AR.js -->
     <a-scene
-      vr-mode-ui="enabled: false"
+      vr-mode-ui="enabled: false;"
       renderer="logarithmicDepthBuffer: true; precision: medium;"
       embedded
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- Cámara AR -->
-      <a-camera></a-camera>
-
-      <!-- Entidad de image tracking NFT -->
-      <!-- Reemplazá "targets/marker" con la ruta a tus archivos .fset, .fset3, .iset -->
-      <a-nft
-        type="nft"
-        url="https://raw.githack.com/mezita/Truman-AR/main/targets/marker"
-        smooth="true"
-        smoothCount="10"
-        smoothTolerance="0.01"
-        smoothThreshold="5"
-        id="nft-marker"
-      >
-        <!-- Video plano que aparece sobre la imagen -->
-        <a-video
+      <a-assets>
+        <!-- Ruta del video (si tu archivo se llama distinto en assets/, cámbialo aquí) -->
+        <video
           id="ar-video"
-          src="#marker-video"
-          width="1.6"
-          height="0.9"
-          position="0 0 0"
-          rotation="0 180 0"
-          visible="true"
+          src="assets/truman.mp4"
+          preload="auto"
+          loop
+          crossorigin="anonymous"
+          webkit-playsinline
+          playsinline
+          muted
+        ></video>
+      </a-assets>
+
+      <!-- Marcador NFT apuntando a la URL de tu repositorio GitHub Pages -->
+      <a-nft
+        ar-controller
+        type="nft"
+        url="https://mezita.github.io/Truman-AR/assets/truman"
+        smooth="true"
+        smoothCount="15"
+        smoothTolerance=".005"
+        smoothThreshold="5"
+      >
+        <!-- Visualización del video sobre la imagen -->
+        <a-video
+          src="#ar-video"
+          width="300"
+          height="175"
+          position="150 0.1 -150"
+          rotation="-90 0 0"
         ></a-video>
       </a-nft>
 
-      <!-- Assets: el video a reproducir -->
-      <a-assets>
-        <!-- Reemplazá "video/tu-video.mp4" con la ruta a tu archivo de video -->
-        <video
-          id="marker-video"
-          src="https://raw.githack.com/mezita/Truman-AR/main/video/tu-video.mp4"
-          preload="auto"
-          loop="true"
-          crossorigin="anonymous"
-          playsinline
-          webkit-playsinline
-        ></video>
-      </a-assets>
+      <a-entity camera></a-entity>
     </a-scene>
 
-    <script src="app.js"></script>
+    <script>
+      // Ocultar pantalla de carga cuando el marcador esté listo
+      window.addEventListener("arjs-nft-loaded", function () {
+        var loader = document.querySelector(".arjs-loader");
+        if (loader) loader.style.display = "none";
+
+        var reticle = document.querySelector("#ar-reticle");
+        if (reticle) reticle.style.display = "block";
+
+        var instruction = document.querySelector("#ar-instruction");
+        if (instruction) instruction.style.display = "block";
+      });
+
+      // Habilitar audio con el primer toque en la pantalla
+      document.body.addEventListener(
+        "click",
+        function () {
+          var video = document.querySelector("#ar-video");
+          if (video) {
+            video.muted = false;
+          }
+        },
+        { once: true },
+      );
+    </script>
   </body>
 </html>
