@@ -1,104 +1,152 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AR.js NFT con Retícula de Feedback</title>
+    <title>Truman AR - Video Tracking</title>
 
-    <!-- A-Frame y AR.js NFT Estable -->
+    <!-- A-Frame y versión estable de AR.js NFT -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+      }
 
-      /* --- 1. PANTALLA DE CARGA --- */
+      /* Pantalla de carga inicial */
       .arjs-loader {
-        height: 100%; width: 100%; position: fixed; top: 0; left: 0;
-        background-color: rgba(0, 0, 0, 0.9); z-index: 9999;
-        display: flex; flex-direction: column; justify-content: center; align-items: center;
-        color: white; text-align: center;
+        height: 100%;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #ffffff;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
       }
-      .spinner {
-        border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff;
-        border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;
-        margin-bottom: 10px;
-      }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-      /* --- 2. RETÍCULA VISUAL (El Recuadro central) --- */
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #ffffff;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 12px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Recuadro de guía para escanear */
       #ar-reticle {
         position: fixed;
-        top: 50%; left: 50%;
+        top: 50%;
+        left: 50%;
         transform: translate(-50%, -50%);
-        /* Tamaño del recuadro. Ajusta según el formato de tu cuadro real */
-        width: 250px; height: 250px; 
-        /* Borde inicial: Rojo y grueso para indicar "Buscando" */
-        border: 5px solid rgba(255, 0, 0, 0.7); 
-        border-radius: 15px;
-        box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
-        z-index: 1000; /* Por encima de la cámara */
-        display: none; /* Oculto hasta que cargue la AR */
-        pointer-events: none; /* No interrumpe los toques en la pantalla */
-        transition: border-color 0.3s, box-shadow 0.3s; /* Animación suave de color */
+        width: 260px;
+        height: 260px;
+        border: 4px solid rgba(255, 50, 50, 0.85);
+        border-radius: 16px;
+        box-shadow: 0 0 15px rgba(255, 50, 50, 0.5);
+        z-index: 1000;
+        display: none;
+        pointer-events: none;
+        transition:
+          border-color 0.3s ease,
+          box-shadow 0.3s ease;
       }
 
-      /* Clase CSS que aplicaremos con JS cuando se detecte la imagen */
+      /* Estado cuando detecta la imagen correcta */
       #ar-reticle.detected {
-        border-color: rgba(0, 255, 0, 0.8); /* Verde: "Detectado" */
-        box-shadow: 0 0 20px rgba(0, 255, 0, 0.7);
+        border-color: rgba(46, 204, 113, 0.9);
+        box-shadow: 0 0 25px rgba(46, 204, 113, 0.8);
       }
 
-      /* Pequeño texto de instrucción debajo del recuadro */
+      /* Mensaje guía inferior */
       #ar-instruction {
-        position: fixed; bottom: 15%; left: 50%; transform: translateX(-50%);
-        color: white; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px;
-        z-index: 1000; display: none;
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #ffffff;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        z-index: 1000;
+        display: none;
+        pointer-events: none;
+        text-align: center;
       }
     </style>
   </head>
 
   <body>
-    <!-- UI Elements -->
+    <!-- UI Overlay -->
     <div class="arjs-loader">
       <div class="spinner"></div>
-      <div>Cargando Marcador NFT...</div>
+      <div>Cargando marcador AR...</div>
+      <div style="font-size: 0.8rem; margin-top: 6px; opacity: 0.7">
+        Procesando descriptores de la imagen
+      </div>
     </div>
-    
-    <div id="ar-reticle"></div> <!-- El recuadro -->
-    <div id="ar-instruction">Enmarca la foto en el recuadro</div>
+
+    <div id="ar-reticle"></div>
+    <div id="ar-instruction">Apunta al cuadro/foto para reproducir</div>
 
     <script>
-      // Componente JS para gestionar eventos de detección y UI
-      AFRAME.registerComponent('ar-controller', {
+      // Componente de control para detección y video
+      AFRAME.registerComponent("ar-controller", {
         init: function () {
           var marker = this.el;
-          this.vid = document.querySelector('#ar-video');
-          this.reticle = document.querySelector('#ar-reticle');
+          this.vid = document.querySelector("#ar-video");
+          this.reticle = document.querySelector("#ar-reticle");
+          this.instruction = document.querySelector("#ar-instruction");
 
-          // EVENTO: Imagen Detectada Correctamente
-          marker.addEventListener('markerFound', function () {
-            console.log("¡Imagen correcta detectada!");
-            // 1. Cambiar recuadro a VERDE agregando la clase CSS
-            if(this.reticle) this.reticle.classList.add('detected');
-            
-            // 2. Reproducir Video
-            if (this.vid) this.vid.play();
-          }.bind(this));
+          // Evento: Imagen detectada
+          marker.addEventListener(
+            "markerFound",
+            function () {
+              if (this.reticle) this.reticle.classList.add("detected");
+              if (this.instruction)
+                this.instruction.textContent = "¡Imagen detectada!";
+              if (this.vid) this.vid.play();
+            }.bind(this),
+          );
 
-          // EVENTO: Se perdió la imagen de vista
-          marker.addEventListener('markerLost', function () {
-            console.log("Se perdió la imagen.");
-            // 1. Volver recuadro a ROJO quitando la clase
-            if(this.reticle) this.reticle.classList.remove('detected');
-            
-            // 2. Pausar Video
-            if (this.vid) this.vid.pause();
-          }.bind(this));
-        }
+          // Evento: Imagen perdida
+          marker.addEventListener(
+            "markerLost",
+            function () {
+              if (this.reticle) this.reticle.classList.remove("detected");
+              if (this.instruction)
+                this.instruction.textContent =
+                  "Apunta al cuadro/foto para reproducir";
+              if (this.vid) this.vid.pause();
+            }.bind(this),
+          );
+        },
       });
     </script>
 
+    <!-- Escena AR.js -->
     <a-scene
       vr-mode-ui="enabled: false;"
       renderer="logarithmicDepthBuffer: true; precision: medium;"
@@ -106,24 +154,35 @@
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
       <a-assets>
-        <video id="ar-video" src="assets/mi-video.mp4" preload="auto" loop crossorigin="anonymous" playsinline muted></video>
+        <!-- Ruta del video (si tu archivo se llama distinto en assets/, cámbialo aquí) -->
+        <video
+          id="ar-video"
+          src="assets/truman.mp4"
+          preload="auto"
+          loop
+          crossorigin="anonymous"
+          webkit-playsinline
+          playsinline
+          muted
+        ></video>
       </a-assets>
 
-      <!-- 
-        REEMPLAZA LA URL COMPLETA ABAJO:
-        No incluyas extensiones (.fset, etc.)
-      -->
+      <!-- Marcador NFT apuntando a la URL de tu repositorio GitHub Pages -->
       <a-nft
-        ar-controller  <!-- Enganchamos nuestro script aquí -->
+        ar-controller
         type="nft"
-        url="https://mezita.github.io/Truman-AR/assets/mi-cuadro"
-        smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5"
+        url="https://mezita.github.io/Truman-AR/assets/truman"
+        smooth="true"
+        smoothCount="15"
+        smoothTolerance=".005"
+        smoothThreshold="5"
       >
-        <!-- Objeto de video (ajusta position/scale para que calce con tu cuadro) -->
+        <!-- Visualización del video sobre la imagen -->
         <a-video
           src="#ar-video"
-          width="300" height="175"
-          position="150 0.1 -150" <!-- Z ligeramente subido (0.1) para evitar parpadeo -->
+          width="300"
+          height="175"
+          position="150 0.1 -150"
           rotation="-90 0 0"
         ></a-video>
       </a-nft>
@@ -132,18 +191,29 @@
     </a-scene>
 
     <script>
-      // Al terminar de cargar AR.js, mostramos la retícula
-      window.addEventListener('arjs-nft-loaded', function () {
-        document.querySelector('.arjs-loader').style.display = 'none';
-        document.querySelector('#ar-reticle').style.display = 'block';
-        document.querySelector('#ar-instruction').style.display = 'block';
+      // Ocultar pantalla de carga cuando el marcador esté listo
+      window.addEventListener("arjs-nft-loaded", function () {
+        var loader = document.querySelector(".arjs-loader");
+        if (loader) loader.style.display = "none";
+
+        var reticle = document.querySelector("#ar-reticle");
+        if (reticle) reticle.style.display = "block";
+
+        var instruction = document.querySelector("#ar-instruction");
+        if (instruction) instruction.style.display = "block";
       });
 
-      // Unlock audio en móviles al primer toque
-      document.body.addEventListener('click', function () {
-        const v = document.querySelector('#ar-video');
-        if(v) v.muted = false;
-      }, { once: true });
+      // Habilitar audio con el primer toque en la pantalla
+      document.body.addEventListener(
+        "click",
+        function () {
+          var video = document.querySelector("#ar-video");
+          if (video) {
+            video.muted = false;
+          }
+        },
+        { once: true },
+      );
     </script>
   </body>
 </html>
